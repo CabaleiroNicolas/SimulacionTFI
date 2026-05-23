@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
  *
  * Fórmula: n_{i+1} = (A * n_i + C) % M
  * Semilla:  últimos dígitos del timestamp actual.
- * Warmup:   se descartan las primeras iteraciones para alejarse del seed.
  */
 @Component
 public class GeneradorRandomUtil {

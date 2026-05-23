@@ -14,31 +14,32 @@ public class DistribucionesUtil {
     private final GeneradorRandomUtil rng;
 
     /**
-     * Normal(media, desviacion) via transformada de Box-Muller.
-     * Z = sqrt(-2 * ln(u1)) * cos(2π * u2)
-     * X = media + desviacion * Z
+     * Normal(media, desviacion) — algoritmo de la cátedra (Clase 5).
+     * Aproximación por Teorema Central del Límite con 12 uniformes:
+     *   x = desviacion * (sum(u1..u12) - 6) + media
      */
     public double Normal(double media, double desviacion) {
-        double u1, u2;
-        do { u1 = rng.generarU(); } while (u1 == 0.0); // evita ln(0)
-        u2 = rng.generarU();
-        double z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-        return media + desviacion * z;
+        double sum = 0;
+        for (int i = 1; i <= 12; i++) {
+            sum += rng.generarU();
+        }
+        return desviacion * (sum - 6) + media;
     }
 
     /**
-     * Poisson(lambda) via método de la multiplicación de uniformes.
-     * Cuenta cuántos u's se necesitan hasta que su producto caiga por debajo de e^(-lambda).
+     * Poisson(a) — algoritmo de la cátedra (Clase 5).
+     *   b = e^(-a)
+     *   mientras p > b: p = p * u, x = x + 1
      */
-    public double Poisson(double lambda) {
-        double limite = Math.exp(-lambda);
-        int k = 0;
+    public double Poisson(double a) {
+        double b = Math.exp(-a);
+        int x = 0;
         double p = 1.0;
-        do {
-            k++;
+        while (p > b) {
             p *= rng.generarU();
-        } while (p > limite);
-        return k - 1;
+            x++;
+        }
+        return x;
     }
 
     /**
