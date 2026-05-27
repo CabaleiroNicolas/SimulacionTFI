@@ -1,5 +1,6 @@
 package com.simulacion.tfi.service;
 
+import com.simulacion.tfi.DatosProcesamientoMonitores;
 import com.simulacion.tfi.dto.SimulacionRequestDTO;
 import com.simulacion.tfi.dto.SimulacionResponseDTO;
 import com.simulacion.tfi.utils.DistribucionesUtil;
@@ -17,17 +18,13 @@ public class SimulacionService {
     private final GeneradorRandomUtil generadorU;
 
     private final double promedioMonitores = 25.0;
-    private final double probabilidadCRT = 0.60;
-    private final double probabilidadLCD = 0.30;
+    private final double probabilidadAcumuladaCRT = 0.60;
+    private final double probabilidadAcumuladaLCD = 0.90;
 
     public SimulacionResponseDTO simular(SimulacionRequestDTO datosSimulacion) {
         log.info("Ejecutando simulacion...");
-        int cantFinalCRT = 0;
-        int cantFinalLCD = 0;
-        int cantFinalLED = 0;
 
-        double tiempoTotal = 0;
-
+        DatosProcesamientoMonitores resultados = new DatosProcesamientoMonitores();
         SimulacionResponseDTO resultado = new SimulacionResponseDTO();
 
         int cantJornadas = datosSimulacion.jornadasASimular();
@@ -39,42 +36,157 @@ public class SimulacionService {
 
             int cantMonitores = (int) distribuciones.Poisson(promedioMonitores);
             int monitorActual = 1;
+            double tiempoJornada = 0;
 
             log.info("Llegaron {} monitores en la jornada {}",cantMonitores,jornadaActual);
             // Recorre monitores de una jornada
             while(monitorActual <= cantMonitores) {
                 log.info("Procesando monitor numero {} de la jornada {}", monitorActual, jornadaActual);
 
+                double tiempoMonitor = 0;
                 double u = generadorU.generarU();
+
                 // Binomiales
-
-                if(u <= probabilidadCRT){ // es CRT
+                if(u <= probabilidadAcumuladaCRT){ // es CRT
                     log.info("Monitor numero {}/{} de la jornada {} es CRT", monitorActual, cantMonitores, jornadaActual);
-                    cantFinalCRT++;
+                    resultados.setCantFinalCRT(resultados.getCantFinalCRT() + 1);
 
-                    tiempoTotal = tiempoTotal + distribuciones.Normal(45, 8);
+                    tiempoMonitor = procesarCRT(resultados);
                 }
-                if(u <= probabilidadLCD){ // es LCD
+                else if(u <= probabilidadAcumuladaLCD){ // es LCD
                     log.info("Monitor numero {}/{} de la jornada {} es LCD", monitorActual, cantMonitores, jornadaActual);
-                    cantFinalLCD++;
+                    resultados.setCantFinalLCD(resultados.getCantFinalLCD() + 1);
 
-                    tiempoTotal = tiempoTotal + distribuciones.Normal(25, 5);
+                    tiempoMonitor = procesarLCD(resultados);
                 }
                 else { // es LED
                     log.info("Monitor numero {}/{} de la jornada {} es LED", monitorActual, cantMonitores, jornadaActual);
-                    cantFinalLED++;
+                    resultados.setCantFinalLED(resultados.getCantFinalLED() + 1);
 
-                    tiempoTotal = tiempoTotal + distribuciones.Normal(15, 3);
+                    tiempoMonitor = procesarLED(resultados);
                 }
 
+                resultados.setTiempoTotal(resultados.getTiempoTotal() + tiempoMonitor);
+                tiempoJornada = tiempoJornada + tiempoMonitor;
                 monitorActual++;
             }
 
+            calcularEstadoJornada(resultados, tiempoJornada, datosSimulacion.horasTurno());
             jornadaActual++;
         }
 
-
-
         return resultado;
+    }
+
+    private void calcularEstadoJornada(DatosProcesamientoMonitores datos, double horasTotalJornada, double horasTurno) {
+
+        //Pasamos minutos de procesamiento de monitores a horas operativas
+        horasTotalJornada = horasTotalJornada/60;
+
+        if(horasTurno < horasTotalJornada) {
+            datos.setCantJornadasCuello(datos.getCantJornadasCuello() + 1);
+        }
+        else if((horasTurno-horasTotalJornada) > 1) {
+            datos.setCantJornadasHolgadas(datos.getCantJornadasHolgadas() + 1);
+        }
+        else {
+            datos.setCantJornadasAjustadas(datos.getCantJornadasAjustadas() + 1);
+        }
+    }
+
+    private double procesarLED(DatosProcesamientoMonitores datos) {
+
+        double tiempo = distribuciones.Uniforme(8, 15);
+
+        // Peligrosos
+        datos.getMaterialesLED().setGrsPlomoTotalLED(datos.getMaterialesLED().getGrsPlomoTotalLED() + distribuciones.Uniforme(0,18));
+        datos.getMaterialesLED().setGrsBFRTotalLED(datos.getMaterialesLED().getGrsBFRTotalLED() + distribuciones.Uniforme(5,35));
+
+        //Normales
+        datos.getMaterialesLED().setKgVidrioPanelTotalLED(datos.getMaterialesLED().getKgVidrioPanelTotalLED() + distribuciones.Normal(0.37,0.065));
+        datos.getMaterialesLED().setKgPlastABSTotalLED(datos.getMaterialesLED().getKgPlastABSTotalLED() + distribuciones.Normal(0.62,0.105));
+        datos.getMaterialesLED().setKgPlastPCTotalLED(datos.getMaterialesLED().getKgPlastPCTotalLED() + distribuciones.Uniforme(0.06,0.24));
+        datos.getMaterialesLED().setKgAceroTotalLED(datos.getMaterialesLED().getKgAceroTotalLED() + distribuciones.Normal(0.98,0.175));
+        datos.getMaterialesLED().setKgCobreTotalLED(datos.getMaterialesLED().getKgCobreTotalLED() + distribuciones.Normal(0.115,0.035));
+        datos.getMaterialesLED().setKgAluminioTotalLED(datos.getMaterialesLED().getKgAluminioTotalLED() + distribuciones.Normal(0.49,0.1));
+        datos.getMaterialesLED().setKgPlacasPCBTotalLED(datos.getMaterialesLED().getKgPlacasPCBTotalLED() + distribuciones.Normal(0.31,0.062));
+        datos.getMaterialesLED().setGrLCTotalLED(datos.getMaterialesLED().getGrLCTotalLED() + distribuciones.Uniforme(8,25));
+        datos.getMaterialesLED().setGrIndioTotalLED(datos.getMaterialesLED().getGrIndioTotalLED() + distribuciones.Uniforme(0.08,0.4));
+        datos.getMaterialesLED().setGrOroTotalLED(datos.getMaterialesLED().getGrOroTotalLED() + distribuciones.Uniforme(0.12,0.45));
+        datos.getMaterialesLED().setGrPlataTotalLED(datos.getMaterialesLED().getGrPlataTotalLED() + distribuciones.Uniforme(0.6,2));
+        datos.getMaterialesLED().setGrPaladioTotalLED(datos.getMaterialesLED().getGrPaladioTotalLED() + distribuciones.Uniforme(0.03,0.21));
+        datos.getMaterialesLED().setGrEstanioTotalLED(datos.getMaterialesLED().getGrEstanioTotalLED() + distribuciones.Normal(28,7));
+        datos.getMaterialesLED().setGrTirasLedTotalLED(datos.getMaterialesLED().getGrTirasLedTotalLED() + distribuciones.Uniforme(12,38));
+
+        return tiempo;
+    }
+
+    private double procesarLCD(DatosProcesamientoMonitores datos) {
+
+        double tiempo = distribuciones.Normal(25, 5);
+        double u = generadorU.generarU();
+
+        if(u <= 0.2) {
+            double tiempoAdicional = distribuciones.Uniforme(15, 25);
+            tiempo = tiempo + tiempoAdicional;
+        }
+
+        // Peligrosos
+        datos.getMaterialesLCD().setGrsPlomoTotalLCD(datos.getMaterialesLCD().getGrsPlomoTotalLCD() + distribuciones.Normal(0,55));
+        datos.getMaterialesLCD().setMgsMercurioTotalLCD(datos.getMaterialesLCD().getMgsMercurioTotalLCD() + distribuciones.Normal(15,6));
+        datos.getMaterialesLCD().setGrsCadmioTotalLCD(datos.getMaterialesLCD().getGrsCadmioTotalLCD() + distribuciones.Uniforme(0,0.15));
+        datos.getMaterialesLCD().setGrsBFRTotalLCD(datos.getMaterialesLCD().getGrsBFRTotalLCD() + distribuciones.Uniforme(10,45));
+
+        //Normales
+        datos.getMaterialesLCD().setKgVidrioPanelTotalLCD(datos.getMaterialesLCD().getKgVidrioPanelTotalLCD() + distribuciones.Normal(0.39,0.068));
+        datos.getMaterialesLCD().setKgPlastABSTotalLCD(datos.getMaterialesLCD().getKgPlastABSTotalLCD() + distribuciones.Normal(0.78,0.125));
+        datos.getMaterialesLCD().setKgPlastPCTotalLCD(datos.getMaterialesLCD().getKgPlastPCTotalLCD() + distribuciones.Uniforme(0.08,0.03));
+        datos.getMaterialesLCD().setKgAceroTotalLCD(datos.getMaterialesLCD().getKgAceroTotalLCD() + distribuciones.Normal(1.35,0.23));
+        datos.getMaterialesLCD().setKgCobreTotalLCD(datos.getMaterialesLCD().getKgCobreTotalLCD() + distribuciones.Normal(0.225,0.048));
+        datos.getMaterialesLCD().setKgAluminioTotalLCD(datos.getMaterialesLCD().getKgAluminioTotalLCD() + distribuciones.Normal(0.54,0.12));
+        datos.getMaterialesLCD().setKgPlacasPCBTotalLCD(datos.getMaterialesLCD().getKgPlacasPCBTotalLCD() + distribuciones.Normal(0.36,0.072));
+        datos.getMaterialesLCD().setGrLCTotalLCD(datos.getMaterialesLCD().getGrLCTotalLCD() + distribuciones.Uniforme(10,28));
+        datos.getMaterialesLCD().setGrIndioTotalLCD(datos.getMaterialesLCD().getGrIndioTotalLCD() + distribuciones.Uniforme(0.1,0.45));
+        datos.getMaterialesLCD().setGrOroTotalLCD(datos.getMaterialesLCD().getGrOroTotalLCD() + distribuciones.Uniforme(0.15,0.50));
+        datos.getMaterialesLCD().setGrPlataTotalLCD(datos.getMaterialesLCD().getGrPlataTotalLCD() + distribuciones.Uniforme(0.8,2.5));
+        datos.getMaterialesLCD().setGrPaladioTotalLCD(datos.getMaterialesLCD().getGrPaladioTotalLCD() + distribuciones.Uniforme(0.04,0.20));
+        datos.getMaterialesLCD().setGrEstanioTotalLCD(datos.getMaterialesLCD().getGrEstanioTotalLCD() + distribuciones.Normal(35,9));
+
+        return tiempo;
+    }
+
+
+    private double procesarCRT(DatosProcesamientoMonitores datos) {
+
+        double tiempo = distribuciones.Normal(45, 8);
+        double u = generadorU.generarU();
+
+        if(u <= 0.3) {
+            double tiempoAdicional = distribuciones.Uniforme(10, 20);
+            tiempo = tiempo + tiempoAdicional;
+
+        }
+
+        // Peligrosos
+        datos.getMaterialesCRT().setGrsPlomoTotalCRT(datos.getMaterialesCRT().getGrsPlomoTotalCRT() + distribuciones.Normal(1600,290));
+        datos.getMaterialesCRT().setMgsMercurioTotalCRT(datos.getMaterialesCRT().getMgsMercurioTotalCRT() + distribuciones.Uniforme(1,8));
+        datos.getMaterialesCRT().setGrsCadmioTotalCRT(datos.getMaterialesCRT().getGrsCadmioTotalCRT() + distribuciones.Uniforme(0.5,3));
+        datos.getMaterialesCRT().setGrsBFRTotalCRT(datos.getMaterialesCRT().getGrsBFRTotalCRT() + distribuciones.Uniforme(15,60));
+
+        //Normales
+        datos.getMaterialesCRT().setKgVidrioPanelTotalCRT(datos.getMaterialesCRT().getKgVidrioPanelTotalCRT() + distribuciones.Normal(5.8,0.7));
+        datos.getMaterialesCRT().setKgPlastABSTotalCRT(datos.getMaterialesCRT().getKgPlastABSTotalCRT() + distribuciones.Normal(3.2,0.4));
+        datos.getMaterialesCRT().setKgPlastPCTotalCRT(datos.getMaterialesCRT().getKgPlastPCTotalCRT() + distribuciones.Uniforme(0.2,0.7));
+        datos.getMaterialesCRT().setKgAceroTotalCRT(datos.getMaterialesCRT().getKgAceroTotalCRT() + distribuciones.Normal(1.2,0.23));
+        datos.getMaterialesCRT().setKgCobreTotalCRT(datos.getMaterialesCRT().getKgCobreTotalCRT() + distribuciones.Normal(0.82,0.125));
+        datos.getMaterialesCRT().setKgAluminioTotalCRT(datos.getMaterialesCRT().getKgAluminioTotalCRT() + distribuciones.Normal(0.28,0.065));
+        datos.getMaterialesCRT().setKgPlacasPCBTotalCRT(datos.getMaterialesCRT().getKgPlacasPCBTotalCRT() + distribuciones.Normal(0.48,0.09));
+        datos.getMaterialesCRT().setGrOroTotalCRT(datos.getMaterialesCRT().getGrOroTotalCRT() + distribuciones.Uniforme(0.2,0.55));
+        datos.getMaterialesCRT().setGrPlataTotalCRT(datos.getMaterialesCRT().getGrPlataTotalCRT() + distribuciones.Uniforme(1,3));
+        datos.getMaterialesCRT().setGrPaladioTotalCRT(datos.getMaterialesCRT().getGrPaladioTotalCRT() + distribuciones.Uniforme(0.05,0.25));
+        datos.getMaterialesCRT().setGrNiquelTotalCRT(datos.getMaterialesCRT().getGrNiquelTotalCRT() + distribuciones.Uniforme(25,75));
+        datos.getMaterialesCRT().setGrEstanioTotalCRT(datos.getMaterialesCRT().getGrEstanioTotalCRT() + distribuciones.Normal(60,14));
+
+        return tiempo;
     }
 }
