@@ -31,7 +31,8 @@ public class SimulacionService {
 
         int promedioMonitores = memoria.getCentro().getCantMonitoresPromedio();
         double horasTurno = datosSimulacion.horasTurno();
-        double costoOperativo = horasTurno*datosSimulacion.jornadasASimular()*datosSimulacion.costoOperarioHora();
+        double capacidadJornada = horasTurno * datosSimulacion.operarios();
+        double costoOperativo = horasTurno*datosSimulacion.jornadasASimular()*datosSimulacion.costoOperarioHora()*datosSimulacion.operarios();
         int cantJornadas = datosSimulacion.jornadasASimular();
         int jornadaActual = 1;
 
@@ -49,7 +50,7 @@ public class SimulacionService {
             while(monitorActual <= cantMonitores) {
                 log.info("Procesando monitor numero {} de la jornada {}", monitorActual, jornadaActual);
 
-                if(horasTurno < tiempoJornada) {
+                if(capacidadJornada < tiempoJornada) {
                     log.info("Se detecto cuello de botella en la jornada {}", jornadaActual);
                     resultados.setCantMonitoresSinProcesar(resultados.getCantMonitoresSinProcesar() + (cantMonitores-monitorActual));
                     resultados.setCantJornadasCuello(resultados.getCantJornadasCuello() + 1);
@@ -86,7 +87,7 @@ public class SimulacionService {
                 monitorActual++;
             }
 
-            calcularEstadoJornada(resultados, tiempoJornada, horasTurno);
+            calcularEstadoJornada(resultados, tiempoJornada, capacidadJornada);
             jornadaActual++;
         }
 

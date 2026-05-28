@@ -10,7 +10,5 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PreciosDTO {
-    private String fechaActualizacion;
-    private String actualizadoPor;
     private Map<String, Double> precios;
 }

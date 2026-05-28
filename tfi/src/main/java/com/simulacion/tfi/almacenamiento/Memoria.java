@@ -1,8 +1,8 @@
 package com.simulacion.tfi.almacenamiento;
 
 import com.simulacion.tfi.dto.CentroDTO;
-import com.simulacion.tfi.dto.HistorialPreciosDTO;
 import com.simulacion.tfi.dto.PreciosDTO;
+import com.simulacion.tfi.dto.SimulacionGuardada;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,8 +16,6 @@ public class Memoria {
     // ── Precios ───────────────────────────────────────────────────────────────
 
     private PreciosDTO precios = new PreciosDTO(
-            "2026-05-18",
-            "Juan Pérez",
             new HashMap<>(Map.ofEntries(
                     Map.entry("vidrioPanelCRT",    85.0),
                     Map.entry("vidrioPanelLCDLED", 117.0),
@@ -38,7 +36,6 @@ public class Memoria {
             ))
     );
 
-    private final List<HistorialPreciosDTO> historialPrecios = new ArrayList<>();
 
     // ── Centro ────────────────────────────────────────────────────────────────
 
@@ -47,7 +44,7 @@ public class Memoria {
             "30-12345678-9",
             "Av. Siempreviva 742",
             "Juan Pérez",
-            25
+            50
     );
 
     // ── Accessors: Precios ────────────────────────────────────────────────────
@@ -56,12 +53,12 @@ public class Memoria {
         return precios;
     }
 
-    public void setPrecios(PreciosDTO precios) {
-        this.precios = precios;
-    }
+    // ── Historial Simulaciones ────────────────────────────────────────────────
 
-    public List<HistorialPreciosDTO> getHistorialPrecios() {
-        return historialPrecios;
+    private final List<SimulacionGuardada> historialSimulaciones = new ArrayList<>();
+
+    public List<SimulacionGuardada> getHistorialSimulaciones() {
+        return historialSimulaciones;
     }
 
     // ── Accessors: Centro ─────────────────────────────────────────────────────

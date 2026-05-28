@@ -20,7 +20,12 @@ public class CentroService {
 
     public CentroDTO actualizarCentro(CentroDTO request) {
         log.info("Actualizando datos del centro — responsable: {}", request.getResponsable());
-        store.setCentro(request);
-        return store.getCentro();
+        CentroDTO centro = store.getCentro();
+        centro.setNombre(request.getNombre());
+        centro.setCuit(request.getCuit());
+        centro.setDireccion(request.getDireccion());
+        centro.setResponsable(request.getResponsable());
+        centro.setCantMonitoresPromedio(request.getCantMonitoresPromedio());
+        return centro;
     }
 }

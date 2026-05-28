@@ -1,6 +1,5 @@
 package com.simulacion.tfi.controller;
 
-import com.simulacion.tfi.dto.PreciosRequestDTO;
 import com.simulacion.tfi.dto.PreciosDTO;
 import com.simulacion.tfi.service.PreciosService;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/precios")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class PreciosController {
 
@@ -21,7 +20,7 @@ public class PreciosController {
     }
 
     @PutMapping
-    public ResponseEntity<PreciosDTO> actualizarPrecios(@RequestBody PreciosRequestDTO request) {
+    public ResponseEntity<PreciosDTO> actualizarPrecios(@RequestBody PreciosDTO request) {
         return ResponseEntity.ok(preciosService.actualizarPrecios(request));
     }
 }
