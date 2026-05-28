@@ -19,7 +19,7 @@ public class CentroService {
     }
 
     public CentroDTO actualizarCentro(CentroDTO request) {
-        log.info("Actualizando datos del centro — responsable: {}", request.responsable());
+        log.info("Actualizando datos del centro — responsable: {}", request.getResponsable());
         store.setCentro(request);
         return store.getCentro();
     }

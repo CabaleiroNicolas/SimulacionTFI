@@ -1,4 +1,4 @@
-package com.simulacion.tfi;
+package com.simulacion.tfi.dto;
 
 import lombok.Data;
 

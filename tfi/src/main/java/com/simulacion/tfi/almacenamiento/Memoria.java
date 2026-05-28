@@ -2,8 +2,7 @@ package com.simulacion.tfi.almacenamiento;
 
 import com.simulacion.tfi.dto.CentroDTO;
 import com.simulacion.tfi.dto.HistorialPreciosDTO;
-import com.simulacion.tfi.dto.PreciosResponseDTO;
-import com.simulacion.tfi.dto.TiemposProcesamientoDTO;
+import com.simulacion.tfi.dto.PreciosDTO;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,7 +15,7 @@ public class Memoria {
 
     // ── Precios ───────────────────────────────────────────────────────────────
 
-    private PreciosResponseDTO precios = new PreciosResponseDTO(
+    private PreciosDTO precios = new PreciosDTO(
             "2026-05-18",
             "Juan Pérez",
             new HashMap<>(Map.ofEntries(
@@ -48,16 +47,16 @@ public class Memoria {
             "30-12345678-9",
             "Av. Siempreviva 742",
             "Juan Pérez",
-            new TiemposProcesamientoDTO(25, 15, 10)
+            25
     );
 
     // ── Accessors: Precios ────────────────────────────────────────────────────
 
-    public PreciosResponseDTO getPrecios() {
+    public PreciosDTO getPrecios() {
         return precios;
     }
 
-    public void setPrecios(PreciosResponseDTO precios) {
+    public void setPrecios(PreciosDTO precios) {
         this.precios = precios;
     }
 

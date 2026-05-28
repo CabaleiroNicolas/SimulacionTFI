@@ -1,7 +1,7 @@
 package com.simulacion.tfi.controller;
 
 import com.simulacion.tfi.dto.PreciosRequestDTO;
-import com.simulacion.tfi.dto.PreciosResponseDTO;
+import com.simulacion.tfi.dto.PreciosDTO;
 import com.simulacion.tfi.service.PreciosService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,12 +16,12 @@ public class PreciosController {
     private final PreciosService preciosService;
 
     @GetMapping
-    public ResponseEntity<PreciosResponseDTO> getPrecios() {
+    public ResponseEntity<PreciosDTO> getPrecios() {
         return ResponseEntity.ok(preciosService.getPrecios());
     }
 
     @PutMapping
-    public ResponseEntity<PreciosResponseDTO> actualizarPrecios(@RequestBody PreciosRequestDTO request) {
+    public ResponseEntity<PreciosDTO> actualizarPrecios(@RequestBody PreciosRequestDTO request) {
         return ResponseEntity.ok(preciosService.actualizarPrecios(request));
     }
 }

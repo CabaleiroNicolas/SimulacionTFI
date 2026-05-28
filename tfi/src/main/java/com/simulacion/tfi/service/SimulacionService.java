@@ -1,7 +1,7 @@
 package com.simulacion.tfi.service;
 
-import com.simulacion.tfi.GananciasMateriales;
-import com.simulacion.tfi.SimulacionResponseDTO;
+import com.simulacion.tfi.dto.GananciasMateriales;
+import com.simulacion.tfi.dto.SimulacionResponseDTO;
 import com.simulacion.tfi.almacenamiento.Memoria;
 import com.simulacion.tfi.dto.SimulacionRequestDTO;
 import com.simulacion.tfi.utils.DistribucionesUtil;
@@ -21,7 +21,6 @@ public class SimulacionService {
     private final GeneradorRandomUtil generadorU;
     private final Memoria memoria;
 
-    private final double promedioMonitores = 25.0;
     private final double probabilidadAcumuladaCRT = 0.60;
     private final double probabilidadAcumuladaLCD = 0.90;
 
@@ -30,6 +29,7 @@ public class SimulacionService {
 
         SimulacionResponseDTO resultados = new SimulacionResponseDTO();
 
+        int promedioMonitores = memoria.getCentro().getCantMonitoresPromedio();
         double horasTurno = datosSimulacion.horasTurno();
         double costoOperativo = horasTurno*datosSimulacion.jornadasASimular()*datosSimulacion.costoOperarioHora();
         int cantJornadas = datosSimulacion.jornadasASimular();
@@ -206,7 +206,7 @@ public class SimulacionService {
         datos.setCostoOperativoTotal(costoOperativo);
 
         // Precios desde memoria
-        Map<String, Double> precios = memoria.getPrecios().precios();
+        Map<String, Double> precios = memoria.getPrecios().getPrecios();
         double precioVidrioPanelCRT    = precios.get("vidrioPanelCRT");
         double precioVidrioPanelLCDLED = precios.get("vidrioPanelLCDLED");
         double precioPlastABS          = precios.get("plastABS");

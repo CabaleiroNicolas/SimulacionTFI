@@ -2,7 +2,7 @@ package com.simulacion.tfi.service;
 
 import com.simulacion.tfi.dto.HistorialPreciosDTO;
 import com.simulacion.tfi.dto.PreciosRequestDTO;
-import com.simulacion.tfi.dto.PreciosResponseDTO;
+import com.simulacion.tfi.dto.PreciosDTO;
 import com.simulacion.tfi.almacenamiento.Memoria;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,25 +19,25 @@ public class PreciosService {
 
     private final Memoria store;
 
-    public PreciosResponseDTO getPrecios() {
+    public PreciosDTO getPrecios() {
         log.info("Consultando precios vigentes");
         return store.getPrecios();
     }
 
-    public PreciosResponseDTO actualizarPrecios(PreciosRequestDTO request) {
+    public PreciosDTO actualizarPrecios(PreciosRequestDTO request) {
         log.info("Actualizando precios — operador: {}", request.actualizadoPor());
-        PreciosResponseDTO anterior = store.getPrecios();
+        PreciosDTO anterior = store.getPrecios();
 
-        PreciosResponseDTO nuevo = new PreciosResponseDTO(
+        PreciosDTO nuevo = new PreciosDTO(
                 LocalDate.now().toString(),
                 request.actualizadoPor(),
                 new HashMap<>(request.precios())
         );
 
         store.getHistorialPrecios().add(new HistorialPreciosDTO(
-                nuevo.fechaActualizacion(),
+                nuevo.getFechaActualizacion(),
                 request.actualizadoPor(),
-                new HashMap<>(anterior.precios()),
+                new HashMap<>(anterior.getPrecios()),
                 new HashMap<>(request.precios())
         ));
 

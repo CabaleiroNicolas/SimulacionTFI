@@ -1,6 +1,6 @@
 package com.simulacion.tfi.controller;
 
-import com.simulacion.tfi.SimulacionResponseDTO;
+import com.simulacion.tfi.dto.SimulacionResponseDTO;
 import com.simulacion.tfi.dto.SimulacionRequestDTO;
 import com.simulacion.tfi.service.SimulacionService;
 import lombok.RequiredArgsConstructor;
