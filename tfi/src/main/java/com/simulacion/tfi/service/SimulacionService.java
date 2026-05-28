@@ -1,13 +1,16 @@
 package com.simulacion.tfi.service;
 
-import com.simulacion.tfi.DatosProcesamientoMonitores;
+import com.simulacion.tfi.GananciasMateriales;
+import com.simulacion.tfi.SimulacionResponseDTO;
+import com.simulacion.tfi.almacenamiento.Memoria;
 import com.simulacion.tfi.dto.SimulacionRequestDTO;
-import com.simulacion.tfi.dto.SimulacionResponseDTO;
 import com.simulacion.tfi.utils.DistribucionesUtil;
 import com.simulacion.tfi.utils.GeneradorRandomUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -16,6 +19,7 @@ public class SimulacionService {
 
     private final DistribucionesUtil distribuciones;
     private final GeneradorRandomUtil generadorU;
+    private final Memoria memoria;
 
     private final double promedioMonitores = 25.0;
     private final double probabilidadAcumuladaCRT = 0.60;
@@ -24,13 +28,15 @@ public class SimulacionService {
     public SimulacionResponseDTO simular(SimulacionRequestDTO datosSimulacion) {
         log.info("Ejecutando simulacion...");
 
-        DatosProcesamientoMonitores resultados = new DatosProcesamientoMonitores();
-        SimulacionResponseDTO resultado = new SimulacionResponseDTO();
+        SimulacionResponseDTO resultados = new SimulacionResponseDTO();
 
+        double horasTurno = datosSimulacion.horasTurno();
+        double costoOperativo = horasTurno*datosSimulacion.jornadasASimular()*datosSimulacion.costoOperarioHora();
         int cantJornadas = datosSimulacion.jornadasASimular();
         int jornadaActual = 1;
 
         // Recorre jornadas
+        jornadasLoop:
         while(jornadaActual <= cantJornadas) {
             log.info("Comenzando simulacion de {} jornadas", cantJornadas);
 
@@ -42,6 +48,14 @@ public class SimulacionService {
             // Recorre monitores de una jornada
             while(monitorActual <= cantMonitores) {
                 log.info("Procesando monitor numero {} de la jornada {}", monitorActual, jornadaActual);
+
+                if(horasTurno < tiempoJornada) {
+                    log.info("Se detecto cuello de botella en la jornada {}", jornadaActual);
+                    resultados.setCantMonitoresSinProcesar(resultados.getCantMonitoresSinProcesar() + (cantMonitores-monitorActual));
+                    resultados.setCantJornadasCuello(resultados.getCantJornadasCuello() + 1);
+                    jornadaActual++;
+                    continue jornadasLoop;
+                }
 
                 double tiempoMonitor = 0;
                 double u = generadorU.generarU();
@@ -66,27 +80,24 @@ public class SimulacionService {
                     tiempoMonitor = procesarLED(resultados);
                 }
 
-                resultados.setTiempoTotal(resultados.getTiempoTotal() + tiempoMonitor);
-                tiempoJornada = tiempoJornada + tiempoMonitor;
+                double tiempoMonitorHoras = tiempoMonitor / 60.0;
+                resultados.setTiempoTotal(resultados.getTiempoTotal() + tiempoMonitorHoras);
+                tiempoJornada = tiempoJornada + tiempoMonitorHoras;
                 monitorActual++;
             }
 
-            calcularEstadoJornada(resultados, tiempoJornada, datosSimulacion.horasTurno());
+            calcularEstadoJornada(resultados, tiempoJornada, horasTurno);
             jornadaActual++;
         }
 
-        return resultado;
+        calcularGanancias(resultados, costoOperativo);
+
+        return resultados;
     }
 
-    private void calcularEstadoJornada(DatosProcesamientoMonitores datos, double horasTotalJornada, double horasTurno) {
+    private void calcularEstadoJornada(SimulacionResponseDTO datos, double horasTotalJornada, double horasTurno) {
 
-        //Pasamos minutos de procesamiento de monitores a horas operativas
-        horasTotalJornada = horasTotalJornada/60;
-
-        if(horasTurno < horasTotalJornada) {
-            datos.setCantJornadasCuello(datos.getCantJornadasCuello() + 1);
-        }
-        else if((horasTurno-horasTotalJornada) > 1) {
+        if((horasTurno-horasTotalJornada) > 1) {
             datos.setCantJornadasHolgadas(datos.getCantJornadasHolgadas() + 1);
         }
         else {
@@ -94,7 +105,7 @@ public class SimulacionService {
         }
     }
 
-    private double procesarLED(DatosProcesamientoMonitores datos) {
+    private double procesarLED(SimulacionResponseDTO datos) {
 
         double tiempo = distribuciones.Uniforme(8, 15);
 
@@ -121,7 +132,7 @@ public class SimulacionService {
         return tiempo;
     }
 
-    private double procesarLCD(DatosProcesamientoMonitores datos) {
+    private double procesarLCD(SimulacionResponseDTO datos) {
 
         double tiempo = distribuciones.Normal(25, 5);
         double u = generadorU.generarU();
@@ -156,7 +167,7 @@ public class SimulacionService {
     }
 
 
-    private double procesarCRT(DatosProcesamientoMonitores datos) {
+    private double procesarCRT(SimulacionResponseDTO datos) {
 
         double tiempo = distribuciones.Normal(45, 8);
         double u = generadorU.generarU();
@@ -188,5 +199,124 @@ public class SimulacionService {
         datos.getMaterialesCRT().setGrEstanioTotalCRT(datos.getMaterialesCRT().getGrEstanioTotalCRT() + distribuciones.Normal(60,14));
 
         return tiempo;
+    }
+
+    private void calcularGanancias(SimulacionResponseDTO datos, double costoOperativo) {
+
+        datos.setCostoOperativoTotal(costoOperativo);
+
+        // Precios desde memoria
+        Map<String, Double> precios = memoria.getPrecios().precios();
+        double precioVidrioPanelCRT    = precios.get("vidrioPanelCRT");
+        double precioVidrioPanelLCDLED = precios.get("vidrioPanelLCDLED");
+        double precioPlastABS          = precios.get("plastABS");
+        double precioPlastPC           = precios.get("plastPC");
+        double precioAcero             = precios.get("acero");
+        double precioCobre             = precios.get("cobre");
+        double precioAluminio          = precios.get("aluminio");
+        double precioPlacasPCB         = precios.get("placasPCB");
+        double precioOro               = precios.get("oro");
+        double precioPlata             = precios.get("plata");
+        double precioPaladio           = precios.get("paladio");
+        double precioEstanio           = precios.get("estanio");
+        double precioNiquel            = precios.get("niquel");
+        double precioIndio             = precios.get("indio");
+        double precioLC                = precios.get("lc");
+        double precioTirasLed          = precios.get("tirasLed");
+
+        // Totales por material sumando todos los tipos de monitor
+        double totalVidrioPanelCRT = datos.getMaterialesCRT().getKgVidrioPanelTotalCRT();
+
+        double totalVidrioPanelLCDLED =  datos.getMaterialesLCD().getKgVidrioPanelTotalLCD()
+                                        + datos.getMaterialesLED().getKgVidrioPanelTotalLED();
+
+        double totalPlastABS   = datos.getMaterialesCRT().getKgPlastABSTotalCRT()
+                               + datos.getMaterialesLCD().getKgPlastABSTotalLCD()
+                               + datos.getMaterialesLED().getKgPlastABSTotalLED();
+
+        double totalPlastPC    = datos.getMaterialesCRT().getKgPlastPCTotalCRT()
+                               + datos.getMaterialesLCD().getKgPlastPCTotalLCD()
+                               + datos.getMaterialesLED().getKgPlastPCTotalLED();
+
+        double totalAcero      = datos.getMaterialesCRT().getKgAceroTotalCRT()
+                               + datos.getMaterialesLCD().getKgAceroTotalLCD()
+                               + datos.getMaterialesLED().getKgAceroTotalLED();
+
+        double totalCobre      = datos.getMaterialesCRT().getKgCobreTotalCRT()
+                               + datos.getMaterialesLCD().getKgCobreTotalLCD()
+                               + datos.getMaterialesLED().getKgCobreTotalLED();
+
+        double totalAluminio   = datos.getMaterialesCRT().getKgAluminioTotalCRT()
+                               + datos.getMaterialesLCD().getKgAluminioTotalLCD()
+                               + datos.getMaterialesLED().getKgAluminioTotalLED();
+
+        double totalPlacasPCB  = datos.getMaterialesCRT().getKgPlacasPCBTotalCRT()
+                               + datos.getMaterialesLCD().getKgPlacasPCBTotalLCD()
+                               + datos.getMaterialesLED().getKgPlacasPCBTotalLED();
+
+        double totalOro        = datos.getMaterialesCRT().getGrOroTotalCRT()
+                               + datos.getMaterialesLCD().getGrOroTotalLCD()
+                               + datos.getMaterialesLED().getGrOroTotalLED();
+
+        double totalPlata      = datos.getMaterialesCRT().getGrPlataTotalCRT()
+                               + datos.getMaterialesLCD().getGrPlataTotalLCD()
+                               + datos.getMaterialesLED().getGrPlataTotalLED();
+
+        double totalPaladio    = datos.getMaterialesCRT().getGrPaladioTotalCRT()
+                               + datos.getMaterialesLCD().getGrPaladioTotalLCD()
+                               + datos.getMaterialesLED().getGrPaladioTotalLED();
+
+        double totalEstanio    = datos.getMaterialesCRT().getGrEstanioTotalCRT()
+                               + datos.getMaterialesLCD().getGrEstanioTotalLCD()
+                               + datos.getMaterialesLED().getGrEstanioTotalLED();
+
+        double totalNiquel     = datos.getMaterialesCRT().getGrNiquelTotalCRT();
+
+        double totalIndio      = datos.getMaterialesLCD().getGrIndioTotalLCD()
+                               + datos.getMaterialesLED().getGrIndioTotalLED();
+
+        double totalLC         = datos.getMaterialesLCD().getGrLCTotalLCD()
+                               + datos.getMaterialesLED().getGrLCTotalLED();
+
+        double totalTirasLed   = datos.getMaterialesLED().getGrTirasLedTotalLED();
+
+        // Ganancias por material
+        datos.getGananciasMateriales().setGananciaKgVidrioPanelCRT(totalVidrioPanelCRT       * precioVidrioPanelCRT);
+        datos.getGananciasMateriales().setGananciaKgVidrioPanelLCDLED(totalVidrioPanelLCDLED * precioVidrioPanelLCDLED);
+        datos.getGananciasMateriales().setGananciaKgPlastABS(totalPlastABS                   * precioPlastABS);
+        datos.getGananciasMateriales().setGananciaKgPlastPC(totalPlastPC                     * precioPlastPC);
+        datos.getGananciasMateriales().setGananciaKgAcero(totalAcero                         * precioAcero);
+        datos.getGananciasMateriales().setGananciaKgCobre(totalCobre                         * precioCobre);
+        datos.getGananciasMateriales().setGananciaKgAluminio(totalAluminio                   * precioAluminio);
+        datos.getGananciasMateriales().setGananciaKgPlacasPCB(totalPlacasPCB                 * precioPlacasPCB);
+        datos.getGananciasMateriales().setGananciaGrOro(totalOro                             * precioOro);
+        datos.getGananciasMateriales().setGananciaGrPlata(totalPlata                         * precioPlata);
+        datos.getGananciasMateriales().setGananciaGrPaladio(totalPaladio                     * precioPaladio);
+        datos.getGananciasMateriales().setGananciaGrEstanio(totalEstanio                     * precioEstanio);
+        datos.getGananciasMateriales().setGananciaGrNiquel(totalNiquel                       * precioNiquel);
+        datos.getGananciasMateriales().setGananciaGrIndio(totalIndio                         * precioIndio);
+        datos.getGananciasMateriales().setGananciaGrLC(totalLC                               * precioLC);
+        datos.getGananciasMateriales().setGananciaGrTirasLed(totalTirasLed                   * precioTirasLed);
+
+        // Ganancia total
+        GananciasMateriales g = datos.getGananciasMateriales();
+        datos.setGananicaMaterialesTotal(
+                g.getGananciaKgVidrioPanelCRT()    +
+                g.getGananciaKgVidrioPanelLCDLED() +
+                g.getGananciaKgPlastABS()           +
+                g.getGananciaKgPlastPC()            +
+                g.getGananciaKgAcero()              +
+                g.getGananciaKgCobre()              +
+                g.getGananciaKgAluminio()           +
+                g.getGananciaKgPlacasPCB()          +
+                g.getGananciaGrOro()                +
+                g.getGananciaGrPlata()              +
+                g.getGananciaGrPaladio()            +
+                g.getGananciaGrEstanio()            +
+                g.getGananciaGrNiquel()             +
+                g.getGananciaGrIndio()              +
+                g.getGananciaGrLC()                 +
+                g.getGananciaGrTirasLed()
+        );
     }
 }
