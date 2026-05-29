@@ -144,7 +144,7 @@ public class SimulacionService {
         }
 
         // Peligrosos
-        datos.getMaterialesLCD().setGrsPlomoTotalLCD(datos.getMaterialesLCD().getGrsPlomoTotalLCD() + distribuciones.Normal(0,55));
+        datos.getMaterialesLCD().setGrsPlomoTotalLCD(datos.getMaterialesLCD().getGrsPlomoTotalLCD() + distribuciones.Uniforme(0,55));
         datos.getMaterialesLCD().setMgsMercurioTotalLCD(datos.getMaterialesLCD().getMgsMercurioTotalLCD() + distribuciones.Normal(15,6));
         datos.getMaterialesLCD().setGrsCadmioTotalLCD(datos.getMaterialesLCD().getGrsCadmioTotalLCD() + distribuciones.Uniforme(0,0.15));
         datos.getMaterialesLCD().setGrsBFRTotalLCD(datos.getMaterialesLCD().getGrsBFRTotalLCD() + distribuciones.Uniforme(10,45));
