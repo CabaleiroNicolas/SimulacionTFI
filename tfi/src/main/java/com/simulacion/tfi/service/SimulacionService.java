@@ -37,7 +37,6 @@ public class SimulacionService {
         int jornadaActual = 1;
 
         // Recorre jornadas
-        jornadasLoop:
         while(jornadaActual <= cantJornadas) {
             log.info("Comenzando simulacion de {} jornadas", cantJornadas);
 
@@ -47,16 +46,9 @@ public class SimulacionService {
 
             log.info("Llegaron {} monitores en la jornada {}",cantMonitores,jornadaActual);
             // Recorre monitores de una jornada
-            while(monitorActual <= cantMonitores) {
+            while((monitorActual <= cantMonitores) && (tiempoJornada < capacidadJornada)) {
                 log.info("Procesando monitor numero {} de la jornada {}", monitorActual, jornadaActual);
 
-                if(capacidadJornada < tiempoJornada) {
-                    log.info("Se detecto cuello de botella en la jornada {}", jornadaActual);
-                    resultados.setCantMonitoresSinProcesar(resultados.getCantMonitoresSinProcesar() + (cantMonitores-monitorActual));
-                    resultados.setCantJornadasCuello(resultados.getCantJornadasCuello() + 1);
-                    jornadaActual++;
-                    continue jornadasLoop;
-                }
 
                 double tiempoMonitor = 0;
                 double u = generadorU.generarU();
@@ -87,6 +79,7 @@ public class SimulacionService {
                 monitorActual++;
             }
 
+            resultados.setCantMonitoresSinProcesar(resultados.getCantMonitoresSinProcesar() + (cantMonitores-monitorActual));
             calcularEstadoJornada(resultados, tiempoJornada, capacidadJornada);
             jornadaActual++;
         }
@@ -98,7 +91,10 @@ public class SimulacionService {
 
     private void calcularEstadoJornada(SimulacionResponseDTO datos, double horasTotalJornada, double horasTurno) {
 
-        if((horasTurno-horasTotalJornada) > 1) {
+        if(horasTurno <= horasTotalJornada) {
+            datos.setCantJornadasCuello(datos.getCantJornadasCuello() + 1);
+        }
+        else if((horasTurno-horasTotalJornada) > 1) {
             datos.setCantJornadasHolgadas(datos.getCantJornadasHolgadas() + 1);
         }
         else {
