@@ -18,6 +18,9 @@ public class SimulacionResponseDTO {
     private int cantJornadasHolgadas;
     private int cantMonitoresSinProcesar;
 
+    private double sueloProt;
+    private double aguaProt;
+
     private DatosMaterialesCRT materialesCRT = new DatosMaterialesCRT();
     private DatosMaterialesLCD materialesLCD = new DatosMaterialesLCD();
     private DatosMaterialesLED materialesLED = new DatosMaterialesLED();

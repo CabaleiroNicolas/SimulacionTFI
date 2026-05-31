@@ -85,8 +85,62 @@ public class SimulacionService {
         }
 
         calcularGanancias(resultados, costoOperativo);
-
+        calcularImpactoAmbiental(resultados);
         return resultados;
+    }
+
+    private void calcularImpactoAmbiental(SimulacionResponseDTO datos) {
+
+        double limiteSueloPlomo = 100.0;
+        double limiteAguaPlomo = 0.01;
+        double densidadSueloPlomo = 1500.0;
+
+        double limiteSueloMercurio = 0.5;
+        double limiteAguaMercurio= 0.001;
+        double densidadSueloMercurio = 1000.0;
+
+        double limiteSueloCadmio = 3.0;
+        double limiteAguaCadmio = 0.003;
+        double densidadSueloCadmio = 1300.0;
+
+        double limiteSueloBFR = 0.05;
+        double limiteAguaBFR = 0.0001;
+        double densidadSueloBFR = 900.0;
+
+
+        double cEfPlomo = distribuciones.Normal(0.016, 0.004);
+        double cEfMecurio = distribuciones.Normal(0.165, 0.045);
+        double cEfCadmio = distribuciones.Normal(0.338, 0.075);
+        double cEfBFR = distribuciones.Normal(0.0044, 0.0015);
+
+        double plomoTotal   = datos.getMaterialesCRT().getGrsPlomoTotalCRT()
+                            + datos.getMaterialesLCD().getGrsPlomoTotalLCD()
+                            + datos.getMaterialesLED().getGrsPlomoTotalLED();
+
+        double mercurioTotal = datos.getMaterialesCRT().getMgsMercurioTotalCRT()
+                             + datos.getMaterialesLCD().getMgsMercurioTotalLCD();
+
+        double cadmioTotal  = datos.getMaterialesCRT().getGrsCadmioTotalCRT()
+                            + datos.getMaterialesLCD().getGrsCadmioTotalLCD();
+
+        double bfrTotal     = datos.getMaterialesCRT().getGrsBFRTotalCRT()
+                            + datos.getMaterialesLCD().getGrsBFRTotalLCD()
+                            + datos.getMaterialesLED().getGrsBFRTotalLED();
+
+        double volSueloPlomo = (plomoTotal*1000*cEfPlomo)/(limiteSueloPlomo*densidadSueloPlomo);
+        double volAguaPlomo = (plomoTotal*1000*cEfPlomo)/limiteAguaPlomo;
+
+        double volSueloMercurio = (mercurioTotal*cEfMecurio)/(limiteSueloMercurio*densidadSueloMercurio);
+        double volAguaMercurio = (mercurioTotal*cEfMecurio)/limiteAguaMercurio;
+
+        double volSueloCadmio = (cadmioTotal*1000*cEfCadmio)/(limiteSueloCadmio*densidadSueloCadmio);
+        double volAguaCadmio = (cadmioTotal*1000*cEfCadmio)/limiteAguaCadmio;
+
+        double volSueloBFR = (bfrTotal*1000*cEfBFR)/(limiteSueloBFR*densidadSueloBFR);
+        double volAguaBFR = (bfrTotal*1000*cEfBFR)/limiteAguaBFR;
+
+        datos.setSueloProt(volSueloPlomo + volSueloMercurio + volSueloCadmio + volSueloBFR);
+        datos.setAguaProt(volAguaPlomo + volAguaMercurio + volAguaCadmio + volAguaBFR);
     }
 
     private void calcularEstadoJornada(SimulacionResponseDTO datos, double horasTotalJornada, double horasTurno) {
